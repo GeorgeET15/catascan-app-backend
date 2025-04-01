@@ -58,7 +58,7 @@ pip install -r requirements.txt
 
 The [CataScan_v1](https://drive.google.com/file/d/1daZn222jSRThK9qFua88cgljJ51Fr9mv/view?usp=sharing) model in a state of the art Cataract Detection model trained on a wide variety of image datasets. Download it and place it in the catascan-app-backend folder.
 
-#### 4. Starting the dev derver
+#### 6. Starting the dev derver
 
 ```bash
 python ./server.py
@@ -112,15 +112,15 @@ python ./server.py
   - **Success (200):**
     ```json
     {
-        "scan_id": "<scan_id>",
-        "user_id": "<user_id>",
-        "prediction": "Cataract" or "No Cataract",
-        "confidence": <confidence_percentage>,
-        "severity": "Severe" or "Mild to Moderate" or "None",
-        "feedback": "<feedback_message>",
-        "recommendation": "<recommendation_text>",
-        "processing_time": <processing_time_seconds>,
-        "model_version": "CataScan_v1"
+      "scan_id": "<scan_id>",
+      "user_id": "<user_id>",
+      "prediction": "Cataract", // Or "No Cataract"
+      "confidence": 0.85, // Example confidence value
+      "severity": "Severe", // Or "Mild to Moderate" or "None"
+      "feedback": "Analysis completed successfully.",
+      "recommendation": "Consult an eye specialist for further evaluation.",
+      "processing_time": 1.23, // Example processing time in seconds
+      "model_version": "CataScan_v1"
     }
     ```
   - **Error (400, 500):**
