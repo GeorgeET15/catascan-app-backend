@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, send_file
-import tensorflow as tf
-import numpy as np
-from PIL import Image as PilImage
+# import tensorflow as tf
+# import numpy as np
+# from PIL import Image as PilImage
 import io
 import time
 import logging
@@ -19,33 +19,32 @@ from reportlab.lib.utils import ImageReader
 import uuid
 import requests
 
-# Load environment variables
+
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-# Configure logging
+
 logging.basicConfig(level=logging.INFO)
 
-# Supabase setup
+
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Load the Keras .h5 model from Hugging Face
-repo_id = "GeorgeET15/CataScan_v1_best"
-filename = "CataScan_v1_best.h5"
-model_path = "CataScan_v1_best.h5"
 
-if not os.path.exists(model_path):
-    hf_hub_download(repo_id=repo_id, filename=filename, local_dir="./")
-model = tf.keras.models.load_model(model_path)
+# repo_id = "GeorgeET15/CataScan_v1_best"
+# filename = "CataScan_v1_best.h5"
+# model_path = "CataScan_v1_best.h5"
 
-# Max file size (5MB) for image upload
+# if not os.path.exists(model_path):
+#     hf_hub_download(repo_id=repo_id, filename=filename, local_dir="./")
+# model = tf.keras.models.load_model(model_path)
+
+
 MAX_FILE_SIZE = 5 * 1024 * 1024
 
-# Middleware to verify JWT token
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -54,15 +53,15 @@ def require_auth(f):
             return jsonify({"error": "Authorization token is missing"}), 401
 
         try:
-            # Ensure token is in "Bearer <token>" format, extract just the token
+           
             if not token.startswith("Bearer "):
                 return jsonify({"error": "Invalid token format. Use 'Bearer <token>'"}), 401
             token = token.replace("Bearer ", "")
-            # Validate token with Supabase
+            
             user_response = supabase.auth.get_user(token)
             if not user_response.user:
                 return jsonify({"error": "Invalid or expired token"}), 401
-            # Store the User object directly in request.user
+            
             request.user = user_response.user
         except Exception as e:
             logging.error(f"Token verification failed: {str(e)}")
@@ -71,12 +70,11 @@ def require_auth(f):
         return f(*args, **kwargs)
     return decorated
 
-# Function to process the input image
-def process_image(image):
-    image = image.resize((224, 224))
-    image_array = np.array(image) / 255.0
-    image_array = np.expand_dims(image_array, axis=0)
-    return image_array.astype(np.float32)
+# def process_image(image):
+#     image = image.resize((224, 224))
+#     image_array = np.array(image) / 255.0
+#     image_array = np.expand_dims(image_array, axis=0)
+#     return image_array.astype(np.float32)
 
 @app.route("/upload-image", methods=["POST"])
 def upload_image():
@@ -88,7 +86,7 @@ def upload_image():
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
     
-    # Get user_id from form data
+   
     user_id = request.form.get("user_id")
     if not user_id:
         return jsonify({"error": "User ID is required"}), 400
@@ -126,80 +124,81 @@ def upload_image():
         logging.error(f"Error uploading image: {str(e)}", exc_info=True)
         return jsonify({"error": f"Failed to upload image: {str(e)}"}), 500
 
-@app.route("/predict", methods=["POST"])
-def predict():
-    data = request.get_json()
-    image_url = data.get("image_url")
-    scan_id = data.get("scan_id")
-    user_id = data.get("user_id")
+# @app.route("/predict", methods=["POST"])
+# def predict():
+#     data = request.get_json()
+#     image_url = data.get("image_url")
+#     scan_id = data.get("scan_id")
+#     user_id = data.get("user_id")
 
-    if not image_url or not scan_id or not user_id:
-        return jsonify({"error": "Image URL, scan ID, and user ID are required"}), 400
+#     if not image_url or not scan_id or not user_id:
+#         return jsonify({"error": "Image URL, scan ID, and user ID are required"}), 400
 
-    try:
-        start_time = time.time()
+#     try:
 
-        response = requests.get(image_url)
-        if response.status_code != 200:
-            return jsonify({"error": "Failed to fetch image from URL"}), 400
+#         start_time = time.time()
+#         response = requests.get(image_url)
+#         if response.status_code != 200:
+#             return jsonify({"error": "Failed to fetch image from URL"}), 400
 
-        image = PilImage.open(io.BytesIO(response.content))
+#         image = PilImage.open(io.BytesIO(response.content))
 
-        if min(image.size) < 32:
-            return jsonify({"error": "Image is too small. Please upload a larger image."}), 400
+#         if min(image.size) < 32:
+#             return jsonify({"error": "Image is too small. Please upload a larger image."}), 400
 
-        image_array = process_image(image)
-        prediction = model.predict(image_array)[0][0]
-        confidence = float(prediction) * 100
-        severity = "Severe" if prediction > 0.7 else "Mild to Moderate" if prediction > 0.3 else "None"
-        processing_time = round(time.time() - start_time, 3)
+#         image_array = process_image(image)
+#         prediction = model.predict(image_array) 
+#         predicted_class = tf.argmax(prediction, axis=1).numpy()[0]
+#         class_names = {0: "immature", 1: "mature", 2: "normal"} 
+#         confidence = float(prediction[0][predicted_class]) * 100
+#         processing_time = round(time.time() - start_time, 3)
 
-        # Store in scan_record with user_id
-        scan_data = {
-            "scan_id": scan_id,
-            "user_id": user_id,
-            "image_url": image_url,
-            "severity_level": severity,
-            "feedback": "Analysis completed successfully.",
-            "created_at": time.strftime('%Y-%m-%d %H:%M:%S')
-        }
-        supabase.table("scan_record").insert(scan_data).execute()
+       
+#         scan_data = {
+#             "scan_id": scan_id,
+#             "user_id": user_id,
+#             "image_url": image_url,
+#             "severity_level": class_names[predicted_class], 
+#             "feedback": "Analysis completed successfully.",
+#             "created_at": time.strftime('%Y-%m-%d %H:%M:%S')
+#         }
+#         supabase.table("scan_record").insert(scan_data).execute()
 
-        # Store in analysis with processing_time as a float
-        analysis_data = {
-            "analysis_id": str(uuid.uuid4()),
-            "scan_id": scan_id,
-            "processing_time": processing_time
-        }
-        supabase.table("analysis").insert(analysis_data).execute()
+#         analysis_data = {
+#             "analysis_id": str(uuid.uuid4()),
+#             "scan_id": scan_id,
+#             "processing_time": processing_time
+#         }
+#         supabase.table("analysis").insert(analysis_data).execute()
 
-        recommendation_text = "Consult an eye specialist for further evaluation." if prediction > 0.5 else "No immediate action required."
-        recommendation_data = {
-            "r_id": str(uuid.uuid4()),
-            "scan_id": scan_id,
-            "r_text": recommendation_text,
-            "created_at": time.strftime('%Y-%m-%d %H:%M:%S')
-        }
-        supabase.table("recommendation").insert(recommendation_data).execute()
+#         recommendation_text = "Consult an eye specialist for further evaluation." if predicted_class in [0, 1] else "No immediate action required."
+#         recommendation_data = {
+#             "r_id": str(uuid.uuid4()),
+#             "scan_id": scan_id,
+#             "r_text": recommendation_text,
+#             "created_at": time.strftime('%Y-%m-%d %H:%M:%S')
+#         }
+#         supabase.table("recommendation").insert(recommendation_data).execute()
 
-        result = {
-            "scan_id": scan_id,
-            "user_id": user_id,
-            "prediction": "Cataract" if prediction > 0.5 else "No Cataract",
-            "confidence": confidence,
-            "severity": severity,
-            "feedback": scan_data["feedback"],
-            "recommendation": recommendation_text,
-            "processing_time": processing_time,
-            "model_version": "CataScan_v1",
-        }
+#         result = {
+#             "scan_id": scan_id,
+#             "user_id": user_id,
+#             "prediction": class_names[predicted_class],
+#             "confidence": confidence,
+#             "severity": class_names[predicted_class],
+#             "probabilities": prediction[0].tolist(), 
+#             "feedback": scan_data["feedback"],
+#             "recommendation": recommendation_text,
+#             "processing_time": processing_time,
+#             "model_version": "CataScan_v1",
+#         }
 
-        logging.info(f"Prediction made: {result}")
-        return jsonify(result)
+#         logging.info(f"Prediction made: {result}")
+#         return jsonify(result)
 
-    except Exception as e:
-        logging.error(f"Error occurred during prediction: {str(e)}", exc_info=True)
-        return jsonify({"error": f"An error occurred during prediction: {str(e)}"}), 500
+#     except Exception as e:
+#         logging.error(f"Error occurred during prediction: {str(e)}", exc_info=True)
+#         return jsonify({"error": f"An error occurred during prediction: {str(e)}"}), 500
     
 @app.route("/signup", methods=["POST"])
 def signup():
@@ -304,7 +303,7 @@ def signin():
 @require_auth
 def get_profile():
     try:
-        user = request.user  # Changed from request.user.user to request.user
+        user = request.user  
         user_id = user.id
 
         profile_response = supabase.table("user_profile").select("*").eq("user_id", user_id).single().execute()
@@ -326,7 +325,7 @@ def get_profile():
 @require_auth
 def update_profile():
     try:
-        user = request.user  # Changed from request.user.user to request.user
+        user = request.user
         user_id = user.id
 
         data = request.get_json()
@@ -366,8 +365,7 @@ def upload_profile_image():
         return jsonify({"error": "Invalid file format. Please upload an image (PNG, JPG, JPEG)."}), 400
 
     try:
-        user = request.user  # Changed from request.user.user to request.user
-        user_id = user.id
+        user = request.user  
 
         file_path = f"public/{user_id}.jpg"
         supabase.storage.from_("profile-images").upload(file_path, file, {"upsert": True})
@@ -391,7 +389,7 @@ def download_report():
         if not scan_id:
             return jsonify({"error": "Scan ID is required"}), 400
 
-        # Fetch data from Supabase
+    
         scan_response = supabase.table("scan_record").select("*").eq("scan_id", scan_id).single().execute()
         if not scan_response.data:
             return jsonify({"error": "Scan record not found"}), 404
@@ -406,7 +404,6 @@ def download_report():
         user_response = supabase.table("user_profile").select("first_name, last_name").eq("user_id", scan_data["user_id"]).single().execute()
         user_data = user_response.data if user_response.data else {}
 
-        # Fetch the scanned image
         image_url = scan_data.get("image_url")
         image_content = None
         if image_url:
@@ -417,12 +414,12 @@ def download_report():
             except Exception as e:
                 logging.warning(f"Failed to fetch image from {image_url}: {str(e)}")
 
-        # Generate PDF
+     
         pdf_buffer = io.BytesIO()
         doc = SimpleDocTemplate(pdf_buffer, pagesize=letter)
         styles = getSampleStyleSheet()
 
-        # Custom Styles
+      
         title_style = ParagraphStyle("TitleStyle", parent=styles["Heading1"], fontSize=22, textColor=colors.HexColor("#004d99"), alignment=1)
         label_style = ParagraphStyle("LabelStyle", parent=styles["Normal"], fontSize=12, textColor=colors.darkgreen)
         value_style = ParagraphStyle("ValueStyle", parent=styles["Normal"], fontSize=12)
@@ -433,7 +430,7 @@ def download_report():
         story.append(Paragraph(f"Prepared for: <b>{user_name}</b>", styles["Normal"]))
         story.append(Spacer(1, 10))
 
-        # Scanned Image
+      
         if image_content:
             try:
                 img = ImageReader(image_content)
@@ -443,13 +440,13 @@ def download_report():
                 logging.error(f"Error adding image to PDF: {str(e)}")
                 story.append(Paragraph("Scanned Image: <i>Unable to load image</i>", value_style))
 
-        # Report Details Table
+    
         details = [
             ["Scan ID:", scan_id],
             ["Severity Level:", scan_data.get("severity_level", "N/A")],
             ["Feedback:", scan_data.get("feedback", "N/A")],
             ["Recommendation:", recommendation_data.get("r_text", "N/A")],
-            ["Processing Time:", f"{analysis_data.get('scan_time', 'N/A')} seconds"],
+            ["Processing Time:", f"{analysis_data.get('processing_time', 'N/A')} seconds"],
             ["Date:", scan_data.get("created_at", "N/A")]
         ]
 
@@ -467,7 +464,7 @@ def download_report():
         story.append(table)
         story.append(Spacer(1, 20))
 
-        # Footer
+        
         story.append(Paragraph("Generated by CataScan_V1", styles["Normal"]))
         story.append(Paragraph(f"Date Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}", styles["Normal"]))
 
@@ -488,7 +485,7 @@ def download_report():
 @require_auth
 def get_scans():
     try:
-        user = request.user  # Changed from request.user.user to request.user
+        user = request.user  
         user_id = user.id
         scans_response = supabase.table("scan_record").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
         return jsonify(scans_response.data), 200
@@ -505,5 +502,4 @@ def test_supabase():
         return jsonify({"error": f"Supabase connection failed: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(use_reloader=False, host='0.0.0.0', port=port)
+    app.run(debug=True, host="0.0.0.0", port=5000)
