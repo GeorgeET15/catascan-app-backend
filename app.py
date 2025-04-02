@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify, send_file
 import tensorflow as tf
 import numpy as np
-from huggingface_hub import hf_hub_download
 from PIL import Image as PilImage
 import io
 import time
@@ -504,8 +503,6 @@ def test_supabase():
         return jsonify({"message": "Supabase connection successful", "data": response.data}), 200
     except Exception as e:
         return jsonify({"error": f"Supabase connection failed: {str(e)}"}), 500
-    
-    
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # Get Render-assigned port or use 5000 as default
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(use_reloader=False)
