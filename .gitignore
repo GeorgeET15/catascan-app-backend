@@ -23,4 +23,4 @@ dist-ssr
 *.sln
 *.sw?
 backend/CataScan_v1_best.h5
-
+env

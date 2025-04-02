@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, send_file
 import tensorflow as tf
 import numpy as np
+from huggingface_hub import hf_hub_download
 from PIL import Image as PilImage
 import io
 import time
@@ -33,8 +34,14 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Load the Keras .h5 model
-model = tf.keras.models.load_model("CataScan_v1_best.h5")
+# Load the Keras .h5 model from Hugging Face
+repo_id = "GeorgeET15/CataScan_v1_best"
+filename = "CataScan_v1_best.h5"
+model_path = "CataScan_v1_best.h5"
+
+if not os.path.exists(model_path):
+    hf_hub_download(repo_id=repo_id, filename=filename, local_dir="./")
+model = tf.keras.models.load_model(model_path)
 
 # Max file size (5MB) for image upload
 MAX_FILE_SIZE = 5 * 1024 * 1024
