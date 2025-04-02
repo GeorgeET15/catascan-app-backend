@@ -9,3 +9,4 @@ requests
 huggingface_hub
 numpy==1.23.5
 h5py==3.7.0
+gunicorn
