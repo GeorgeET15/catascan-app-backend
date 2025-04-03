@@ -512,6 +512,33 @@ def test_supabase():
         return jsonify({"message": "Supabase connection successful", "data": response.data}), 200
     except Exception as e:
         return jsonify({"error": f"Supabase connection failed: {str(e)}"}), 500
+    
+
+
+
+
+@app.route("/health", methods=["GET"])
+def health_check():
+    return jsonify({"status": "Server is alive"}), 200
+
+
+def keep_alive():
+    while True:
+        try:
+            
+            url = "https://catascan-app-backend.onrender.com/health"  
+            response = requests.get(url)
+            if response.status_code == 200:
+                logging.info("Keep-alive ping successful")
+            else:
+                logging.warning(f"Keep-alive ping failed with status: {response.status_code}")
+        except Exception as e:
+            logging.error(f"Error in keep_alive: {str(e)}")
+        
+     
+        time.sleep(500)
+
+
 
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=7000)
