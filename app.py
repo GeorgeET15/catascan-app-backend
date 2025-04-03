@@ -168,6 +168,7 @@ def predict():
             "user_id": user_id,
             "image_url": image_url,
             "severity_level": class_names[predicted_class],
+            "confidence": confidence,
             "feedback": "Analysis completed successfully.",
             "created_at": time.strftime('%Y-%m-%d %H:%M:%S')
         }
@@ -456,6 +457,7 @@ def download_report():
         details = [
             ["Scan ID:", scan_id],
             ["Severity Level:", scan_data.get("severity_level", "N/A")],
+            ["Confidence:", scan_data.get("confidence", "N/A")],
             ["Feedback:", scan_data.get("feedback", "N/A")],
             ["Recommendation:", recommendation_data.get("r_text", "N/A")],
             ["Processing Time:", f"{analysis_data.get('processing_time', 'N/A')} seconds"],
