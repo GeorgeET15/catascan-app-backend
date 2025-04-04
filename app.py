@@ -18,6 +18,7 @@ from reportlab.lib import colors
 from reportlab.lib.utils import ImageReader
 import uuid
 import requests
+from google import genai
 
 # Load environment variables
 load_dotenv()
@@ -31,7 +32,9 @@ logging.basicConfig(level=logging.INFO)
 # Supabase setup
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+genai_client = genai.Client(api_key=GEMINI_API_KEY)
 
 # Max file size (5MB) for image upload
 MAX_FILE_SIZE = 5 * 1024 * 1024
@@ -90,6 +93,21 @@ def upload_image():
 
     if not file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
         return jsonify({"error": "Invalid file format. Please upload an image (PNG, JPG, JPEG)."}), 400
+
+    # Check if the image is an eye using Gemini API
+    prompt = """
+    Analyze the provided image and determine if it is an image of a human eye.
+    Return only 'yes' or 'no' as the response, nothing else.
+    """
+    response = genai_client.models.generate_content(
+        model="models/gemini-1.5-pro",
+        contents=[
+            {"type": "text", "text": prompt},
+            {"type": "image", "data": file_content}
+        ]
+    )
+    if response.text.strip().lower() != "yes":
+        return jsonify({"error": "The image is not an eye"}), 400
 
     try:
         scan_id = str(uuid.uuid4())
