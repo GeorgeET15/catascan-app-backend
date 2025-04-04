@@ -24,7 +24,7 @@ from google import genai
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "https://catascan-app-backend.onrender.com"}})
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,8 +33,9 @@ logging.basicConfig(level=logging.INFO)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+MODEL_ID = "gemini-1.5-pro"  # Updated model ID (removed "models/" prefix)
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-genai_client = genai.Client(api_key=GEMINI_API_KEY)
+genai_client = genai.Client(api_key="AIzaSyD61XXk7aplSLCryA5qdj8znYP58duMLm4")
 
 # Max file size (5MB) for image upload
 MAX_FILE_SIZE = 5 * 1024 * 1024
@@ -95,19 +96,26 @@ def upload_image():
         return jsonify({"error": "Invalid file format. Please upload an image (PNG, JPG, JPEG)."}), 400
 
     # Check if the image is an eye using Gemini API
-    prompt = """
-    Analyze the provided image and determine if it is an image of a human eye.
-    Return only 'yes' or 'no' as the response, nothing else.
-    """
-    response = genai_client.models.generate_content(
-        model="models/gemini-1.5-pro",
-        contents=[
-            {"type": "text", "text": prompt},
-            {"type": "image", "data": file_content}
-        ]
-    )
-    if response.text.strip().lower() != "yes":
-        return jsonify({"error": "The image is not an eye"}), 400
+    try:
+        logging.info("Calling Gemini API to analyze image")
+        response = genai_client.models.generate_content(
+            model=MODEL_ID,
+            contents=[
+                {
+                    "inline_data": {
+                        "mime_type": "image/jpeg",
+                        "data": file_content
+                    }
+                },
+                "Is this an image of a human eye? Return only 'yes' or 'no' as the response, nothing else."
+            ]
+        )
+        logging.info(f"Gemini API response: {response.text}")
+        if response.text.strip().lower() != "yes":
+            return jsonify({"error": "The image is not an eye"}), 400
+    except Exception as e:
+        logging.error(f"Gemini API error: {str(e)}", exc_info=True)
+        return jsonify({"error": "Failed to analyze image with Gemini API"}), 500
 
     try:
         scan_id = str(uuid.uuid4())
