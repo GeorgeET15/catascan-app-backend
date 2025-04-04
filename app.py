@@ -114,7 +114,7 @@ def upload_image():
                         "data": file_content
                     }
                 },
-                "Is this an image of a human eye? Return only 'yes' or 'no' as the response, nothing else."
+                "Is this a close-up image of a single human eye, where the eye is the primary focus and occupies most of the frame? Return only 'yes' or 'no' as the response, nothing else."
             ]
         )
         logging.info(f"Gemini API response: {response.text}")
