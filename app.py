@@ -24,7 +24,7 @@ from google import genai
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "https://catascan-app-backend.onrender.com"}})
+CORS(app, resources={r"/*": {"origins": "https://catascan.vercel.app/"}})
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
